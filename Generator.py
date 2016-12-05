@@ -4,8 +4,7 @@ import subprocess
 from collections import OrderedDict
 import unicodedata
 
-class_dictionary = OrderedDict()
-properties_dictionary = OrderedDict()
+variable_roots = {}
 
 class less_checkCommand(sublime_plugin.EventListener):
 
@@ -30,6 +29,9 @@ class line_split:
 		document = view.substr(sublime.Region(0, view.size()))
 		lines = document.splitlines()
 
+		class_dictionary = OrderedDict()
+		properties_dictionary = OrderedDict()
+
 		class_lines = [",", "{", "}"]
 
 		# For every line in the document, we need to grab
@@ -49,27 +51,28 @@ class line_split:
 				del properties_dictionary[index]
 
 		# Clear out control characters such as \t or \n
-		remove_control_chars(class_dictionary, True)
-		remove_control_chars(properties_dictionary, False)
+		# remove_control_chars(class_dictionary, True)
+		# remove_control_chars(properties_dictionary, False)
+
+		variable_root_generator(class_dictionary)
+		print(properties_dictionary)
 
 
-def remove_control_chars(dictionary, is_classes):
+# def remove_control_chars(dictionary, is_classes):
 
-	for line in dictionary.items():
-		dictionary[line[0]] = line[1].strip()
+# 	for line in dictionary.items():
+# 		dictionary[line[0]] = line[1].strip()
 
-	if is_classes:
-		class_dictionary = dictionary
-		variable_stem_generator(class_dictionary)
-	else:
-		properties_dictionary = dictionary
+# 	if is_classes:
+# 		variable_root_generator(dictionary)
 
-def variable_stem_generator(dictionary):
+def variable_root_generator(dictionary):
 	variable_partials = []
 	variable_list = []
-	group_count = 0;
-	old_group_count = 0;
-	nested_lines = []
+	group_count = -1;
+	nest_count_dictionary = {}
+	nest_lines_key = []
+	overnested_lines = []
 
 	for line in dictionary.items():
 		line_number = line[0]
@@ -82,16 +85,13 @@ def variable_stem_generator(dictionary):
 
 			# Calculate the nest level, adding 1 if
 			# a new nest is found. 0 means a new nest.
-			if group_count == 0:
-				print("Nest started on line " + str(line_number))
-
 			group_count += 1
-			old_group_count += 1
 
+			nest_count_dictionary[group_count] = line_number
 			# Check for nesting of more than 6 times,
 			# and stored in an array to use later.
-			if group_count >= 7:
-				nested_lines.append(line_number)
+			if group_count >= 6:
+				overnested_lines.append(line_number)
 
 		if "}" in class_name:
 			# add array from variable_partials to 
@@ -103,55 +103,19 @@ def variable_stem_generator(dictionary):
 			# We need to check for them and pull the data from this line
 			# CODE HERE
 
-			# Remove from the count if a nest is closed.
-			# We need to check for paired nest_count values 
-			# here as well.
+			# Remove from the dictionary when a nest is closed, and
+			# add the line number to nest_lines_key.
+			nest_lines_key.append(nest_count_dictionary[group_count])
+			del nest_count_dictionary[group_count]
+
+			# We lower the group count AFTER, so that we don't grab the
+			# wrong a line that doesn't exist from the dictionary
 			group_count -=1
 
-			if group_count == 0:
+			if group_count == -1:
 				# We'll need to clear our arrays here, so that we start
 				# fresh for each new nest.
-				print("Nest ended on line " + str(line_number))
+				nest_count_dictionary.clear()
 
-	# print('\n'.join('{}: {}'.format(*k) for k in enumerate(variable_list)))
-	print("There are " + str(len(nested_lines)) + " classes that are nested 6 times or more. These can be found on lines " + str(nested_lines))
-	print()
-
-
-# Array 1
-# 0: 1
-# 1: 4
-# 2: 7 
-# 3: 9
-# 4: 11
-# 3: 13
-# 4: 15
-# 3: 17
-# 2: 18
-# 1: 19
-# 0: 20
-# -1: 21
-
-
-# Array 2
-# 0: ['no_nest {', 'nest_1-1 {', 'nest_2 {', 'nest_3 {', 'nest_4-1 {']
-# 1: ['no_nest {', 'nest_1-1 {', 'nest_2 {', 'nest_3 {', 'nest_4-2 {']
-# 2: ['no_nest {', 'nest_1-1 {', 'nest_2 {', 'nest_3 {']
-# 3: ['no_nest {', 'nest_1-1 {', 'nest_2 {']
-# 4: ['no_nest {', 'nest_1-1 {']
-# 5: ['no_nest {']
-
-
-# Array 3 
-# 0: [1, ['no_nest {']]
-# 1: [4, ['no_nest {', 'nest_1-1 {']]
-# 2:
-
-# count = -1
-# new_count = -1
-
-# count +=1
-
-# if count + 1 == new_count:
-# 	pair off
-# else count = new_count
+	variable_roots = sorted(zip(nest_lines_key, variable_list))
+	print('\n'.join('{}: {}'.format(*k) for k in enumerate(variable_roots)))
