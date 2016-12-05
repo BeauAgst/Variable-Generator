@@ -5,6 +5,7 @@ from collections import OrderedDict
 import unicodedata
 
 variable_roots = {}
+properties_dictionary = OrderedDict()
 
 class less_checkCommand(sublime_plugin.EventListener):
 
@@ -30,7 +31,6 @@ class line_split:
 		lines = document.splitlines()
 
 		class_dictionary = OrderedDict()
-		properties_dictionary = OrderedDict()
 
 		class_lines = [",", "{", "}"]
 
@@ -55,8 +55,6 @@ class line_split:
 		# remove_control_chars(properties_dictionary, False)
 
 		variable_root_generator(class_dictionary)
-		print(properties_dictionary)
-
 
 # def remove_control_chars(dictionary, is_classes):
 
@@ -118,4 +116,34 @@ def variable_root_generator(dictionary):
 				nest_count_dictionary.clear()
 
 	variable_roots = sorted(zip(nest_lines_key, variable_list))
-	print('\n'.join('{}: {}'.format(*k) for k in enumerate(variable_roots)))
+	variable_stem_generator(variable_roots)
+
+def variable_stem_generator(dictionary):
+
+	for first, next in zip(dictionary, dictionary[1:]):
+		first_item = int(first[0])
+		next_item = int(next[0])
+
+		for line in range(first_item, next_item):
+
+			for item in properties_dictionary.items():
+
+				if item[0] == line:
+					print(first[1])
+					print("line " + str(item[0]) + " (" + str(item[1]) + ") is between lines " + str(first_item) + " and " + str(next_item))
+					# create variable with property and first item's 
+					# data. Then store it in an object so that we can
+					# replace the lines as we go. Object data will be 
+					# formatted as follows: 
+					
+					# {
+					# 	line: 1,
+					# 	tabs: 4,
+					# 	variable: '\t\t.thumb {',
+					# 	value: block
+					# }
+
+				# test = list(properties_dictionary.items())
+				# if item == test[-1]:
+				# 	print(item)
+				# 	print 
