@@ -3,6 +3,7 @@ from sublime import Region
 import subprocess
 from collections import OrderedDict
 import unicodedata
+from itertools import islice
 
 variable_roots = {}
 properties_dictionary = OrderedDict()
@@ -123,6 +124,8 @@ def variable_stem_generator(dictionary):
 	for first, next in zip(dictionary, dictionary[1:]):
 		first_item = int(first[0])
 		next_item = int(next[0])
+		last_item = int(dictionary[-1][0])
+		last_property = list(islice(properties_dictionary, None))[-1:][0]
 
 		for line in range(first_item, next_item):
 
@@ -147,3 +150,14 @@ def variable_stem_generator(dictionary):
 				# if item == test[-1]:
 				# 	print(item)
 				# 	print 
+
+	# New loop to grab everything after the final class, as there's
+	# no lines proceeding for it to check between. We also need to 
+	# +1 to grab the last property
+	for line in range(last_item, last_property+1):
+
+		for item in properties_dictionary.items():
+
+			if item[0] == line:
+				print(dictionary[-1][1])
+				print("line " + str(item[0]) + " (" + str(item[1]) + ") is between lines " + str(last_item) + " and " + str(last_property))
