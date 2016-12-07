@@ -2,25 +2,32 @@ import sublime, sublime_plugin
 from sublime import Region
 import subprocess
 from collections import OrderedDict
-import unicodedata
 from itertools import islice
+import re
 
 variable_roots = {}
 properties_dictionary = OrderedDict()
 
-class less_checkCommand(sublime_plugin.EventListener):
+class less_checkCommand(sublime_plugin.TextCommand):
 
-	def on_post_save(self, view):
-		current_file = view.file_name()
+	def run(self, view):
+		current_file = self.view.file_name()
 		lint_format = ".less"
 
+		# Grab the current line-number so that we can change the 
+		# variable on this line specifically
+		view = sublime.Window.active_view(sublime.active_window())
+		(row,col) = view.rowcol(view.sel()[0].begin())
+		current_line_number = row + 1
+
 		# We first check to see whether we have just saved a LESS
-		# file first. If we have, the command will run.
+		# file. If we have, the command will run.
 		# Later, we will add this in as a sublime setting so that
 		# you can change it to SASS or another preprocessor, and
 		# deal with the variable identifier accordingly.
 		if current_file.endswith(lint_format):
-			line_split.run(self, view)
+			class_dictionary = line_split.run(self, view)
+			variable_stem(variable_root(class_dictionary), current_line_number)
 
 class line_split:
 
@@ -30,10 +37,9 @@ class line_split:
 	def run(self, view):
 		document = view.substr(sublime.Region(0, view.size()))
 		lines = document.splitlines()
-
 		class_dictionary = OrderedDict()
-
 		class_lines = [",", "{", "}"]
+
 
 		# For every line in the document, we need to grab
 		# those that have classes in them. We store those in
@@ -51,21 +57,9 @@ class line_split:
 			if not line or line.isspace():
 				del properties_dictionary[index]
 
-		# Clear out control characters such as \t or \n
-		# remove_control_chars(class_dictionary, True)
-		# remove_control_chars(properties_dictionary, False)
+		return class_dictionary
 
-		variable_root_generator(class_dictionary)
-
-# def remove_control_chars(dictionary, is_classes):
-
-# 	for line in dictionary.items():
-# 		dictionary[line[0]] = line[1].strip()
-
-# 	if is_classes:
-# 		variable_root_generator(dictionary)
-
-def variable_root_generator(dictionary):
+def variable_root(dictionary):
 	variable_partials = []
 	variable_list = []
 	group_count = -1;
@@ -116,48 +110,102 @@ def variable_root_generator(dictionary):
 				# fresh for each new nest.
 				nest_count_dictionary.clear()
 
-	variable_roots = sorted(zip(nest_lines_key, variable_list))
-	variable_stem_generator(variable_roots)
+	# We need to return our variable list, but it 
+	# needs to be sorted with the line number, otherwise
+	# the information is useless to us.
+	return sorted(zip(nest_lines_key, variable_list))
 
-def variable_stem_generator(dictionary):
+
+def variable_stem(dictionary, current_line):
 
 	for first, next in zip(dictionary, dictionary[1:]):
 		first_item = int(first[0])
 		next_item = int(next[0])
+		last = dictionary[-1][1]
 		last_item = int(dictionary[-1][0])
 		last_property = list(islice(properties_dictionary, None))[-1:][0]
 
-		for line in range(first_item, next_item):
 
-			for item in properties_dictionary.items():
-
-				if item[0] == line:
-					print(first[1])
-					print("line " + str(item[0]) + " (" + str(item[1]) + ") is between lines " + str(first_item) + " and " + str(next_item))
-					# create variable with property and first item's 
-					# data. Then store it in an object so that we can
-					# replace the lines as we go. Object data will be 
-					# formatted as follows: 
-					
-					# {
-					# 	line: 1,
-					# 	tabs: 4,
-					# 	variable: '\t\t.thumb {',
-					# 	value: block
-					# }
-
-				# test = list(properties_dictionary.items())
-				# if item == test[-1]:
-				# 	print(item)
-				# 	print 
-
-	# New loop to grab everything after the final class, as there's
-	# no lines proceeding for it to check between. We also need to 
-	# +1 to grab the last property
-	for line in range(last_item, last_property+1):
-
+		# Loop through the entire dictionary list
+		# so that we can look for our line
 		for item in properties_dictionary.items():
 
-			if item[0] == line:
-				print(dictionary[-1][1])
-				print("line " + str(item[0]) + " (" + str(item[1]) + ") is between lines " + str(last_item) + " and " + str(last_property))
+			# Check if our line is between two classes, so 
+			# that we can grab the correct variable root
+			if current_line in range(first_item, next_item):
+
+				if current_line == item[0]:
+					generate_variable(first[1], item[1])
+					return
+
+			# We also need to check between the last item and the 
+			# very last property plus one, so that we can grab any 
+			# properties that are in the very final nest of the file
+			if current_line in range(last_item, last_property+1):
+
+				if current_line == item[0]:
+					generate_variable(last, item[1])
+					return
+
+
+def generate_variable(variable_list, line):
+
+	variable_name = []
+	variable_prefix = "@"
+	css_property = line.split(":", 1)[0].strip()
+	css_value = line.split(":", 1)[1].strip()
+	tabs = line.count("\t") - line.lstrip().count("\t")
+	hooks = [
+		["xxs-max()", "xxs-max_"],
+		["xs-max()", "xs-max_"],
+		["sm-max()", "sm-max_"],
+		["md-max()", "md-max_"],
+		["lg-max()", "lg-max_"],
+		["xs()", "xs_"],
+		["xs-landscape()", "xs-landscape_"],
+		["sm()", "sm_"],
+		["md()", "md_"],
+		["lg()", "lg_"],
+		["laptop()", "laptop_"],
+		["xl()", "xl_"],
+		["sm-only()", "sm-only_"],
+		["md-only()", "md-only_"],
+		["lg-only()", "lg-only_"],
+		["xs-only()", "xs-only_"]
+	]
+
+	# Check for reponsive hook, and replace with appropriate prefix.
+	for hook in hooks:
+
+		if hook[0] in variable_list[0]:
+			responsive_prefix = hook[1]
+			variable_list.remove(variable_list[0])
+			break
+
+	# Check for regular hooks, and remove that portion of the class. We
+	# also need to remove all symbols from the variable, and then 
+	# strip whitespace.
+	for variable in variable_list:
+		variable = variable.replace(".hook-", "")
+		variable_name.append(re.sub('[^A-Za-z0-9]+', '', variable))
+
+	# Join our list together
+	variable_name = "-".join(variable_name)
+
+	# If a responsive hook was found, we need to stick it back into the list
+	if 'responsive_prefix' in locals():
+		variable_name = responsive_prefix + variable_name
+
+	# Add variable prefix, dependant on preprocessor
+	variable_name = variable_prefix + variable_name
+
+	# Add css property
+	variable_name = variable_name + "--" + css_property
+
+	print(variable_name + ": " + css_value)
+	print(("\t")*tabs + css_property + ": " + variable_name + ";")
+	copy2clip(variable_name + ": " + css_value)
+
+def copy2clip(txt):
+	cmd='echo '+txt.strip()+'|clip'
+	return subprocess.check_call(cmd, shell=True)
