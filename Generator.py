@@ -147,7 +147,6 @@ def variable_stem(dictionary, current_line):
 					generate_variable(last, item[1])
 					return
 
-
 def generate_variable(variable_list, line):
 
 	variable_name = []
@@ -202,8 +201,7 @@ def generate_variable(variable_list, line):
 	# Add css property
 	variable_name = variable_name + "--" + css_property
 
-	print(variable_name + ": " + css_value)
-	print(("\t")*tabs + css_property + ": " + variable_name + ";")
+	print(css_property + ": " + variable_name + ";")
 	copy2clip(variable_name + ": " + css_value)
 
 def copy2clip(txt):
