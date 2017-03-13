@@ -6,7 +6,10 @@ from itertools import islice
 import re
 
 variable_roots = {}
+<<<<<<< HEAD
+=======
 properties_dictionary = OrderedDict()
+>>>>>>> 4ddadd90b4adf6f46fa094cb2bb981ec166c7be1
 
 class less_checkCommand(sublime_plugin.TextCommand):
 
@@ -14,6 +17,10 @@ class less_checkCommand(sublime_plugin.TextCommand):
 		current_file = self.view.file_name()
 		lint_format = ".less"
 
+<<<<<<< HEAD
+		# We first check to see whether we have just saved a LESS
+		# file first. If we have, the command will run.
+=======
 		# Grab the current line-number so that we can change the 
 		# variable on this line specifically
 		view = sublime.Window.active_view(sublime.active_window())
@@ -22,6 +29,7 @@ class less_checkCommand(sublime_plugin.TextCommand):
 
 		# We first check to see whether we have just saved a LESS
 		# file. If we have, the command will run.
+>>>>>>> 4ddadd90b4adf6f46fa094cb2bb981ec166c7be1
 		# Later, we will add this in as a sublime setting so that
 		# you can change it to SASS or another preprocessor, and
 		# deal with the variable identifier accordingly.
@@ -37,10 +45,19 @@ class line_split:
 	def run(self, view):
 		document = view.substr(sublime.Region(0, view.size()))
 		lines = document.splitlines()
+<<<<<<< HEAD
+
+		class_dictionary = OrderedDict()
+		properties_dictionary = OrderedDict()
+
+		class_lines = [",", "{", "}"]
+
+=======
 		class_dictionary = OrderedDict()
 		class_lines = [",", "{", "}"]
 
 
+>>>>>>> 4ddadd90b4adf6f46fa094cb2bb981ec166c7be1
 		# For every line in the document, we need to grab
 		# those that have classes in them. We store those in
 		# class_dictionary, and remove them from 
@@ -57,9 +74,29 @@ class line_split:
 			if not line or line.isspace():
 				del properties_dictionary[index]
 
+<<<<<<< HEAD
+		# Clear out control characters such as \t or \n
+		# remove_control_chars(class_dictionary, True)
+		# remove_control_chars(properties_dictionary, False)
+
+		variable_root_generator(class_dictionary)
+		print(properties_dictionary)
+
+
+# def remove_control_chars(dictionary, is_classes):
+
+# 	for line in dictionary.items():
+# 		dictionary[line[0]] = line[1].strip()
+
+# 	if is_classes:
+# 		variable_root_generator(dictionary)
+
+def variable_root_generator(dictionary):
+=======
 		return class_dictionary
 
 def variable_root(dictionary):
+>>>>>>> 4ddadd90b4adf6f46fa094cb2bb981ec166c7be1
 	variable_partials = []
 	variable_list = []
 	group_count = -1;
@@ -110,6 +147,10 @@ def variable_root(dictionary):
 				# fresh for each new nest.
 				nest_count_dictionary.clear()
 
+<<<<<<< HEAD
+	variable_roots = sorted(zip(nest_lines_key, variable_list))
+	print('\n'.join('{}: {}'.format(*k) for k in enumerate(variable_roots)))
+=======
 	# We need to return our variable list, but it 
 	# needs to be sorted with the line number, otherwise
 	# the information is useless to us.
@@ -207,3 +248,4 @@ def generate_variable(variable_list, line):
 def copy2clip(txt):
 	cmd='echo '+txt.strip()+'|clip'
 	return subprocess.check_call(cmd, shell=True)
+>>>>>>> 4ddadd90b4adf6f46fa094cb2bb981ec166c7be1
